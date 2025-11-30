@@ -7,15 +7,24 @@ import {
   TouchableOpacity,
   Animated,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Calendar, TrendingUp, ChevronLeft, ChevronRight, Settings } from 'lucide-react-native';
+import {
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+  Sparkles,
+  Activity,
+} from 'lucide-react-native';
 import { useFlowSpeak } from '@/contexts/FlowSpeakContext';
 import TaskCard from '@/components/TaskCard';
 import type { Task } from '@/constants/program';
 import * as Haptics from 'expo-haptics';
+import { palette } from '@/constants/colors';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -30,6 +39,9 @@ export default function HomeScreen() {
     goToPreviousDay,
     progress,
     dailyInsight,
+    isLoading,
+    isHydrated,
+    loadError,
   } = useFlowSpeak();
 
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -66,137 +78,136 @@ export default function HomeScreen() {
     goToNextDay();
   };
 
+  if (loadError) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <Text style={styles.loadingTitle}>Couldn&apos;t load your journey</Text>
+        <Text style={styles.loadingSubtitle}>{loadError.message}</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoading || !isHydrated) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={palette.primary} />
+        <Text style={styles.loadingText}>Loading your journey...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#FF6B9D', '#C651CD', '#5B4FFF']}
+        colors={palette.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradientBackground}
       />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>FlowSpeak</Text>
-            <Text style={styles.subGreeting}>Your journey to fluency</Text>
-          </View>
-          <View style={styles.headerButtons}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => router.push('/calendar')}
-            >
-              <Calendar size={24} color="#fff" strokeWidth={2.5} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => router.push('/stats')}
-            >
-              <TrendingUp size={24} color="#fff" strokeWidth={2.5} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => router.push('/settings')}
-            >
-              <Settings size={24} color="#fff" strokeWidth={2.5} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.streakContainer}>
-          <View style={styles.streakBadge}>
-            <Text style={styles.streakNumber}>{currentStreak}</Text>
-            <Text style={styles.streakLabel}>day streak</Text>
-          </View>
-        </View>
-
-        {dailyInsight && (
-          <View style={styles.insightContainer}>
-            <Text style={styles.insightText}>{dailyInsight}</Text>
-          </View>
-        )}
-
-        <View style={styles.dayNavigator}>
-          <TouchableOpacity
-            onPress={handlePreviousDay}
-            disabled={progress.currentDay <= 1}
-            style={[
-              styles.navButton,
-              progress.currentDay <= 1 && styles.navButtonDisabled,
-            ]}
-          >
-            <ChevronLeft
-              size={24}
-              color={progress.currentDay <= 1 ? '#ffffff80' : '#fff'}
-              strokeWidth={2.5}
-            />
-          </TouchableOpacity>
-          <View style={styles.dayInfo}>
-            <Text style={styles.dayNumber}>Day {progress.currentDay}</Text>
-            <Text style={styles.phaseText}>{currentDayProgram.phase}</Text>
-          </View>
-          <TouchableOpacity
-            onPress={handleNextDay}
-            disabled={progress.currentDay >= 365}
-            style={[
-              styles.navButton,
-              progress.currentDay >= 365 && styles.navButtonDisabled,
-            ]}
-          >
-            <ChevronRight
-              size={24}
-              color={progress.currentDay >= 365 ? '#ffffff80' : '#fff'}
-              strokeWidth={2.5}
-            />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.progressSection}>
-          <Text style={styles.progressLabel}>Today&apos;s Progress</Text>
-          <View style={styles.progressBarContainer}>
-            <Animated.View
-              style={[
-                styles.progressBar,
-                {
-                  width: progressWidth,
-                },
-              ]}
-            />
-          </View>
-          <Text style={styles.progressText}>
-            {Math.round(progressPercentage)}% complete
-          </Text>
-        </View>
-
         <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          style={styles.scrollAll}
+          contentContainerStyle={styles.scrollAllContent}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.sectionTitle}>Today&apos;s Tasks</Text>
-          <Text style={styles.focusText}>{currentDayProgram.focus}</Text>
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.greeting}>Flow Speak</Text>
+              <Text style={styles.subGreeting}>Small wins, every day.</Text>
+            </View>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => router.push('/stats')}
+              >
+                <TrendingUp size={22} color={palette.text} strokeWidth={2.5} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => router.push('/settings')}
+              >
+                <Settings size={22} color={palette.text} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
+          </View>
 
-          {currentDayProgram.tasks.map(task => (
+          {dailyInsight && (
+            <View style={styles.insightContainer}>
+              <Text style={styles.insightText}>{dailyInsight}</Text>
+            </View>
+          )}
+
+          <View style={styles.dayNavigator}>
             <TouchableOpacity
-              key={task.id}
-              onPress={() => handleTaskPress(task)}
-              activeOpacity={1}
+              onPress={handlePreviousDay}
+              disabled={progress.currentDay <= 1}
+              style={[
+                styles.navButton,
+                progress.currentDay <= 1 && styles.navButtonDisabled,
+              ]}
             >
-              <TaskCard
-                task={task}
-                isCompleted={isTaskCompleted(task.id)}
-                onToggle={() => {
-                  if (isTaskCompleted(task.id)) {
-                    uncompleteTask(task.id);
-                  } else {
-                    completeTask(task);
-                  }
-                }}
+              <ChevronLeft
+                size={24}
+                color={progress.currentDay <= 1 ? '#ffffff80' : palette.text}
+                strokeWidth={2.5}
               />
             </TouchableOpacity>
+            <View style={styles.dayInfo}>
+              <Text style={styles.dayNumber}>Day {progress.currentDay}</Text>
+              <Text style={styles.phaseText}>{currentDayProgram.phase}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleNextDay}
+              disabled={progress.currentDay >= 365}
+              style={[
+                styles.navButton,
+                progress.currentDay >= 365 && styles.navButtonDisabled,
+              ]}
+            >
+              <ChevronRight
+                size={24}
+                color={progress.currentDay >= 365 ? '#ffffff80' : palette.text}
+                strokeWidth={2.5}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Today&apos;s Flow</Text>
+            <TouchableOpacity style={styles.smallAction} onPress={() => router.push('/practice')}>
+              <Activity size={16} color={palette.text} strokeWidth={2.5} />
+              <Text style={styles.smallActionText}>Free practice</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.focusText}>Curated plan • {currentDayProgram.tasks.length} tasks</Text>
+
+          {currentDayProgram.tasks.map(task => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              isCompleted={isTaskCompleted(task.id)}
+              onPressCard={() => handleTaskPress(task)}
+              onToggle={() => {
+                if (isTaskCompleted(task.id)) {
+                  uncompleteTask(task.id);
+                } else {
+                  completeTask(task);
+                }
+              }}
+            />
           ))}
 
           <View style={styles.bottomPadding} />
         </ScrollView>
+
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push('/practice')}
+          activeOpacity={0.85}
+        >
+          <Sparkles size={22} color={palette.text} strokeWidth={2.5} />
+          <Text style={styles.fabText}>Quick Practice</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     </View>
   );
@@ -205,14 +216,41 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: palette.bg,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.bg,
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: palette.mutedText,
+    fontWeight: '600' as const,
+  },
+  loadingTitle: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: palette.text,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  loadingSubtitle: {
+    fontSize: 14,
+    color: palette.subtleText,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   gradientBackground: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 320,
+    height: 140,
+    opacity: 0.5,
   },
   safeArea: {
     flex: 1,
@@ -223,18 +261,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 16,
+    paddingBottom: 10,
   },
   greeting: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '800' as const,
-    color: '#fff',
+    color: palette.text,
   },
   subGreeting: {
-    fontSize: 15,
-    color: '#ffffffd0',
-    marginTop: 2,
-    fontWeight: '500' as const,
+    fontSize: 12,
+    color: palette.mutedText,
+    marginTop: 4,
+    fontWeight: '600' as const,
   },
   headerButtons: {
     flexDirection: 'row',
@@ -244,48 +282,28 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  streakContainer: {
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  streakBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 20,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  streakNumber: {
-    fontSize: 28,
-    fontWeight: '800' as const,
-    color: '#fff',
-  },
-  streakLabel: {
-    fontSize: 13,
-    color: '#ffffffd0',
-    fontWeight: '600' as const,
-    marginTop: -2,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   dayNavigator: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 10,
   },
   navButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   navButtonDisabled: {
     opacity: 0.3,
@@ -294,79 +312,98 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dayNumber: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800' as const,
-    color: '#fff',
+    color: palette.text,
   },
   phaseText: {
     fontSize: 14,
-    color: '#ffffffd0',
+    color: palette.mutedText,
     fontWeight: '600' as const,
     marginTop: 2,
   },
-  progressSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  progressLabel: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: '#fff',
-    marginBottom: 8,
-  },
-  progressBarContainer: {
-    height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 13,
-    color: '#ffffffd0',
-    marginTop: 6,
-    fontWeight: '600' as const,
-  },
-  scrollView: {
+  scrollAll: {
     flex: 1,
   },
-  scrollContent: {
+  scrollAllContent: {
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   sectionTitle: {
     fontSize: 24,
     fontWeight: '800' as const,
-    color: '#1a1a1a',
-    marginBottom: 6,
+    color: palette.text,
+    marginBottom: 4,
   },
   focusText: {
     fontSize: 15,
-    color: '#666',
-    marginBottom: 20,
+    color: palette.subtleText,
+    marginBottom: 12,
     fontWeight: '500' as const,
   },
+  smallAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: palette.card,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  smallActionText: {
+    color: palette.text,
+    fontWeight: '700' as const,
+    fontSize: 13,
+  },
   bottomPadding: {
-    height: 40,
+    height: 60,
   },
   insightContainer: {
     marginHorizontal: 20,
-    marginBottom: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    marginBottom: 14,
+    backgroundColor: palette.card,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: palette.border,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
   },
   insightText: {
     fontSize: 14,
-    color: '#fff',
+    color: palette.text,
     lineHeight: 20,
     fontWeight: '600' as const,
     textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    backgroundColor: palette.accent,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  fabText: {
+    color: palette.text,
+    fontWeight: '800' as const,
+    fontSize: 14,
   },
 });

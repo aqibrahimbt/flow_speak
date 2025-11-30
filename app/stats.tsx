@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Flame, Target, Award, TrendingUp } from 'lucide-react-native';
 import { useFlowSpeak } from '@/contexts/FlowSpeakContext';
+import { palette } from '@/constants/colors';
 
 export default function StatsScreen() {
   const {
@@ -12,11 +13,42 @@ export default function StatsScreen() {
     currentStreak,
     totalCompletedDays,
     currentDayProgram,
+    isLoading,
+    isHydrated,
+    loadError,
+    todayCompletedTasks,
+    todayExtraPractice,
   } = useFlowSpeak();
 
   const totalTasks = progress.completedTasks.length;
   const daysActive = progress.currentDay;
   const percentageComplete = ((daysActive / 365) * 100).toFixed(1);
+  const recentRatings = progress.ratings.slice(-30);
+  const recentMoods = progress.moods.slice(-30);
+  const last7Moods = recentMoods.slice(-7);
+  const last7Ratings = recentRatings.slice(-7);
+
+  const avg = (arr: number[]) => arr.length ? (arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(1) : '—';
+  const avgRating30 = avg(recentRatings.map(r => r.rating));
+  const moodScore = (mood: string) => {
+    switch (mood) {
+      case 'great': return 5;
+      case 'good': return 4;
+      case 'okay': return 3;
+      case 'struggling': return 2;
+      case 'difficult': return 1;
+      default: return 3;
+    }
+  };
+  const avgMood30 = avg(recentMoods.map(m => moodScore(m.mood)));
+
+  const mostSwapped = (() => {
+    const map = new Map<string, number>();
+    progress.swaps.forEach(s => {
+      map.set(s.originalTaskId, (map.get(s.originalTaskId) || 0) + 1);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  })();
 
   const stats = [
     {
@@ -53,18 +85,36 @@ export default function StatsScreen() {
     },
   ];
 
+  if (loadError) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <Text style={styles.loadingTitle}>Couldn&apos;t load your stats</Text>
+        <Text style={styles.loadingSubtitle}>{loadError.message}</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoading || !isHydrated) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={palette.primary} />
+        <Text style={styles.loadingText}>Loading stats...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Stack.Screen
         options={{
           title: 'Your Progress',
-          headerStyle: { backgroundColor: '#FF6B9D' },
-          headerTintColor: '#fff',
+          headerStyle: { backgroundColor: palette.bg },
+          headerTintColor: palette.text,
           headerTitleStyle: { fontWeight: '700' as const },
         }}
       />
       <LinearGradient
-        colors={['#FF6B9D', '#C651CD', '#5B4FFF']}
+        colors={palette.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
@@ -211,6 +261,59 @@ export default function StatsScreen() {
             </View>
           </View>
 
+          <View style={styles.trendsCard}>
+            <Text style={styles.trendsTitle}>Mood & Ratings</Text>
+            <View style={styles.trendsRow}>
+              <View style={styles.trendItem}>
+                <Text style={styles.trendLabel}>Avg rating (30d)</Text>
+                <Text style={styles.trendValue}>{avgRating30}</Text>
+              </View>
+              <View style={styles.trendItem}>
+                <Text style={styles.trendLabel}>Avg mood (30d)</Text>
+                <Text style={styles.trendValue}>{avgMood30}</Text>
+              </View>
+            </View>
+            <View style={styles.trendList}>
+              <Text style={styles.trendSubheading}>Last 7 moods</Text>
+              {last7Moods.length === 0 ? (
+                <Text style={styles.trendEmpty}>No moods logged yet.</Text>
+              ) : last7Moods.map((m, idx) => (
+                <Text key={idx} style={styles.trendEntry}>
+                  Day {m.day}: {m.mood}{m.note ? ` — ${m.note}` : ''}
+                </Text>
+              ))}
+              <Text style={[styles.trendSubheading, { marginTop: 10 }]}>Last 7 ratings</Text>
+              {last7Ratings.length === 0 ? (
+                <Text style={styles.trendEmpty}>No ratings yet.</Text>
+              ) : last7Ratings.map((r, idx) => (
+                <Text key={idx} style={styles.trendEntry}>
+                  Task {r.taskId}: {r.rating}{r.note ? ` — ${r.note}` : ''}
+                </Text>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.trendsCard}>
+            <Text style={styles.trendsTitle}>Most Swapped Tasks</Text>
+            {mostSwapped.length === 0 ? (
+              <Text style={styles.trendEmpty}>No swaps yet.</Text>
+            ) : mostSwapped.map(([taskId, count]) => (
+              <Text key={taskId} style={styles.trendEntry}>
+                {taskId}: {count} swap(s)
+              </Text>
+            ))}
+          </View>
+
+          <View style={styles.trendsCard}>
+            <Text style={styles.trendsTitle}>Today Snapshot</Text>
+            <Text style={styles.trendEntry}>
+              Plan tasks done: {todayCompletedTasks.length} / {currentDayProgram.tasks.length}
+            </Text>
+            <Text style={styles.trendEntry}>
+              Extra practice items: {todayExtraPractice.length}
+            </Text>
+          </View>
+
           <View style={styles.bottomPadding} />
         </ScrollView>
       </SafeAreaView>
@@ -221,7 +324,33 @@ export default function StatsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: palette.bg,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.bg,
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: palette.mutedText,
+    fontWeight: '600' as const,
+  },
+  loadingTitle: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: palette.text,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  loadingSubtitle: {
+    fontSize: 14,
+    color: palette.subtleText,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   headerGradient: {
     position: 'absolute',
@@ -240,26 +369,28 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   mainCard: {
-    backgroundColor: '#fff',
+    backgroundColor: palette.card,
     borderRadius: 24,
     padding: 24,
     marginBottom: 20,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   mainTitle: {
     fontSize: 48,
     fontWeight: '800' as const,
-    color: '#1a1a1a',
+    color: palette.text,
   },
   mainSubtitle: {
     fontSize: 20,
     fontWeight: '700' as const,
-    color: '#FF4A8B',
+    color: palette.accent,
     marginTop: 4,
   },
   mainFocus: {
     fontSize: 15,
-    color: '#666',
+    color: palette.subtleText,
     marginTop: 8,
     textAlign: 'center',
     fontWeight: '500' as const,
@@ -275,6 +406,8 @@ const styles = StyleSheet.create({
     minWidth: '47%',
     borderRadius: 20,
     padding: 20,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   statIconContainer: {
     width: 48,
@@ -286,7 +419,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 13,
-    color: '#666',
+    color: palette.subtleText,
     fontWeight: '600' as const,
     marginBottom: 8,
   },
@@ -301,18 +434,21 @@ const styles = StyleSheet.create({
   },
   statUnit: {
     fontSize: 14,
-    color: '#888',
+    color: palette.mutedText,
     fontWeight: '600' as const,
   },
   milestoneCard: {
-    backgroundColor: '#fff',
+    backgroundColor: palette.card,
     borderRadius: 20,
     padding: 24,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginBottom: 14,
   },
   milestoneTitle: {
     fontSize: 20,
     fontWeight: '700' as const,
-    color: '#1a1a1a',
+    color: palette.text,
     marginBottom: 24,
   },
   milestones: {
@@ -327,39 +463,94 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: palette.mutedPanel,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
   milestoneCircleComplete: {
-    backgroundColor: '#4AFFAA',
+    backgroundColor: palette.success,
   },
   milestoneNumber: {
     fontSize: 16,
     fontWeight: '800' as const,
-    color: '#999',
+    color: palette.subtleText,
   },
   milestoneNumberComplete: {
-    color: '#08D171',
+    color: '#0F2E22',
   },
   milestoneLabel: {
     fontSize: 11,
-    color: '#666',
+    color: palette.subtleText,
     fontWeight: '600' as const,
     textAlign: 'center',
   },
   milestoneLine: {
     flex: 1,
     height: 3,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: palette.border,
     marginHorizontal: 4,
     marginBottom: 32,
   },
   milestoneLineComplete: {
-    backgroundColor: '#4AFFAA',
+    backgroundColor: palette.success,
   },
   bottomPadding: {
     height: 20,
+  },
+  trendsCard: {
+    backgroundColor: palette.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginBottom: 14,
+  },
+  trendsTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: palette.text,
+    marginBottom: 10,
+  },
+  trendsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  trendItem: {
+    flex: 1,
+    backgroundColor: palette.mutedPanel,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  trendLabel: {
+    fontSize: 12,
+    color: palette.subtleText,
+    fontWeight: '600' as const,
+  },
+  trendValue: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: palette.text,
+    marginTop: 4,
+  },
+  trendList: {
+    marginTop: 12,
+    gap: 4,
+  },
+  trendSubheading: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: palette.text,
+  },
+  trendEntry: {
+    fontSize: 13,
+    color: palette.subtleText,
+    lineHeight: 18,
+  },
+  trendEmpty: {
+    fontSize: 13,
+    color: palette.subtleText,
   },
 });

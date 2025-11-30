@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "rork-app",
+    "scheme": "flowspeak-app",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.rork.flowspeak-stutter-support"
+      "bundleIdentifier": "app.flowspeak-stutter-support"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.flowspeak_stutter_support",
+      "package": "app.flowspeak_stutter_support",
       "permissions": [
         "android.permission.VIBRATE"
       ]
@@ -34,7 +34,7 @@
       [
         "expo-router",
         {
-          "origin": "https://rork.com/"
+          "origin": "https://flowspeak.com/"
         }
       ],
       "expo-font",

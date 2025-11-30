@@ -1,13 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform, Pressable } from 'react-native';
 import { Flame, Wind, BookOpen, Brain, Dumbbell, CheckCircle2, Circle } from 'lucide-react-native';
 import type { Task } from '@/constants/program';
 import * as Haptics from 'expo-haptics';
+import { palette, typeChips } from '@/constants/colors';
 
 interface TaskCardProps {
   task: Task;
   isCompleted: boolean;
   onToggle: () => void;
+  onPressCard?: () => void;
 }
 
 const typeIcons = {
@@ -18,19 +20,11 @@ const typeIcons = {
   exercise: Dumbbell,
 };
 
-const typeColors = {
-  breathing: { bg: '#E8F5FF', border: '#4AC7FF', text: '#0891D1' },
-  speech: { bg: '#FFE8F0', border: '#FF4A8B', text: '#D10854' },
-  reading: { bg: '#F0E8FF', border: '#A64AFF', text: '#7108D1' },
-  mindfulness: { bg: '#E8FFF0', border: '#4AFFAA', text: '#08D171' },
-  exercise: { bg: '#FFF8E8', border: '#FFB84A', text: '#D17108' },
-};
-
-export default function TaskCard({ task, isCompleted, onToggle }: TaskCardProps) {
+export default function TaskCard({ task, isCompleted, onToggle, onPressCard }: TaskCardProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const checkAnim = useRef(new Animated.Value(isCompleted ? 1 : 0)).current;
   const Icon = typeIcons[task.type];
-  const colors = typeColors[task.type];
+  const colors = typeChips[task.type];
 
   useEffect(() => {
     Animated.spring(checkAnim, {
@@ -42,6 +36,10 @@ export default function TaskCard({ task, isCompleted, onToggle }: TaskCardProps)
   }, [isCompleted, checkAnim]);
 
   const handlePress = () => {
+    if (onPressCard) {
+      onPressCard();
+      return;
+    }
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
@@ -70,33 +68,46 @@ export default function TaskCard({ task, isCompleted, onToggle }: TaskCardProps)
 
   return (
     <Animated.View style={[styles.container, { transform: [{ scale: scaleAnim }] }]}>
-      <TouchableOpacity
+      <Pressable
         style={[
           styles.card,
-          { backgroundColor: colors.bg, borderColor: colors.border },
+          { backgroundColor: colors.bg, borderColor: isCompleted ? colors.ring : '#1F2639', shadowColor: colors.ring },
           isCompleted && styles.completedCard,
         ]}
         onPress={handlePress}
         activeOpacity={0.8}
       >
         <View style={styles.header}>
-          <View style={[styles.iconContainer, { backgroundColor: colors.border }]}>
+          <View style={[styles.iconContainer, { backgroundColor: colors.ring }]}>
             <Icon size={20} color="#fff" strokeWidth={2.5} />
           </View>
           <View style={styles.titleContainer}>
-            <Text style={[styles.title, { color: colors.text }]}>{task.title}</Text>
-            <Text style={styles.duration}>{task.duration} min</Text>
+            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+              {task.title}
+            </Text>
+            <Text style={[styles.duration, { color: palette.subtleText }]}>{task.duration} min • {task.type}</Text>
           </View>
-          <Animated.View style={{ transform: [{ scale: checkScale }] }}>
-            {isCompleted ? (
-              <CheckCircle2 size={28} color={colors.border} strokeWidth={2.5} fill={colors.border} />
-            ) : (
-              <Circle size={28} color={colors.border} strokeWidth={2.5} />
-            )}
-          </Animated.View>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              if (Platform.OS !== 'web') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              }
+              onToggle();
+            }}
+            hitSlop={8}
+          >
+            <Animated.View style={{ transform: [{ scale: checkScale }] }}>
+              {isCompleted ? (
+                <CheckCircle2 size={28} color={colors.ring} strokeWidth={2.5} fill={colors.ring} />
+              ) : (
+                <Circle size={28} color={colors.ring} strokeWidth={2.5} />
+              )}
+            </Animated.View>
+          </Pressable>
         </View>
-        <Text style={styles.description}>{task.description}</Text>
-      </TouchableOpacity>
+        <Text style={styles.description} numberOfLines={2}>{task.description}</Text>
+      </Pressable>
     </Animated.View>
   );
 }
@@ -104,14 +115,19 @@ export default function TaskCard({ task, isCompleted, onToggle }: TaskCardProps)
 const styles = StyleSheet.create({
   container: {
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
   },
   card: {
     borderRadius: 20,
     padding: 18,
-    borderWidth: 2,
+    borderWidth: 1.5,
+    backgroundColor: palette.card,
   },
   completedCard: {
-    opacity: 0.7,
+    opacity: 0.9,
   },
   header: {
     flexDirection: 'row',
@@ -133,15 +149,15 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700' as const,
     marginBottom: 2,
+    color: palette.text,
   },
   duration: {
     fontSize: 13,
-    color: '#888',
     fontWeight: '500' as const,
   },
   description: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: 13,
+    color: palette.subtleText,
     lineHeight: 20,
   },
 });

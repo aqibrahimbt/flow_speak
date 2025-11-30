@@ -1,16 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Trash2, Info, BookOpen, Dumbbell, Zap, ToggleLeft, ToggleRight } from 'lucide-react-native';
 import { useFlowSpeak } from '@/contexts/FlowSpeakContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import { palette } from '@/constants/colors';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { progress, toggleAdaptiveTasks } = useFlowSpeak();
+  const { progress, toggleAdaptiveTasks, isLoading, isHydrated, loadError, resetProgress } = useFlowSpeak();
 
   const handleResetProgress = () => {
     if (Platform.OS === 'web') {
@@ -38,7 +38,7 @@ export default function SettingsScreen() {
 
   const performReset = async () => {
     try {
-      await AsyncStorage.removeItem('@flowspeak_progress');
+      await resetProgress();
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
@@ -59,18 +59,36 @@ export default function SettingsScreen() {
     year: 'numeric',
   });
 
+  if (loadError) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <Text style={styles.loadingTitle}>Couldn&apos;t load settings</Text>
+        <Text style={styles.loadingSubtitle}>{loadError.message}</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoading || !isHydrated) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={palette.primary} />
+        <Text style={styles.loadingText}>Loading settings...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Stack.Screen
         options={{
           title: 'Settings',
-          headerStyle: { backgroundColor: '#5B4FFF' },
-          headerTintColor: '#fff',
+          headerStyle: { backgroundColor: palette.bg },
+          headerTintColor: palette.text,
           headerTitleStyle: { fontWeight: '700' as const },
         }}
       />
       <LinearGradient
-        colors={['#5B4FFF', '#C651CD']}
+        colors={palette.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
@@ -131,7 +149,7 @@ export default function SettingsScreen() {
             <Text style={styles.sectionTitle}>Resources</Text>
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => router.push('/plan-overview')}
+              onPress={() => router.push('plan-overview')}
             >
               <View style={[styles.menuIcon, { backgroundColor: '#E8F5FF' }]}>
                 <BookOpen size={20} color="#4AC7FF" strokeWidth={2.5} />
@@ -194,7 +212,33 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: palette.bg,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.bg,
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: palette.mutedText,
+    fontWeight: '600' as const,
+  },
+  loadingTitle: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: palette.text,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  loadingSubtitle: {
+    fontSize: 14,
+    color: palette.subtleText,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   headerGradient: {
     position: 'absolute',
@@ -213,15 +257,17 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   infoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: palette.card,
     borderRadius: 20,
     padding: 24,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   infoTitle: {
     fontSize: 22,
     fontWeight: '800' as const,
-    color: '#1a1a1a',
+    color: palette.text,
     marginBottom: 16,
   },
   infoRow: {
@@ -230,16 +276,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: palette.border,
   },
   infoLabel: {
     fontSize: 15,
-    color: '#666',
+    color: palette.subtleText,
     fontWeight: '500' as const,
   },
   infoValue: {
     fontSize: 15,
-    color: '#1a1a1a',
+    color: palette.text,
     fontWeight: '700' as const,
   },
   section: {
@@ -248,19 +294,21 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '700' as const,
-    color: '#888',
+    color: palette.mutedText,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
     paddingHorizontal: 4,
   },
   menuItem: {
-    backgroundColor: '#fff',
+    backgroundColor: palette.card,
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   menuIcon: {
     width: 44,
@@ -276,32 +324,34 @@ const styles = StyleSheet.create({
   menuText: {
     fontSize: 16,
     fontWeight: '700' as const,
-    color: '#1a1a1a',
+    color: palette.text,
     marginBottom: 2,
   },
   menuSubtext: {
     fontSize: 13,
-    color: '#888',
+    color: palette.subtleText,
     fontWeight: '500' as const,
   },
   dangerItem: {
     borderWidth: 1,
-    borderColor: '#FFD7E0',
+    borderColor: palette.border,
   },
   dangerText: {
-    color: '#FF4A8B',
+    color: palette.accent,
   },
   aboutCard: {
-    backgroundColor: '#fff',
+    backgroundColor: palette.card,
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   aboutIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#F0EDFF',
+    backgroundColor: palette.mutedPanel,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -309,12 +359,12 @@ const styles = StyleSheet.create({
   aboutTitle: {
     fontSize: 20,
     fontWeight: '800' as const,
-    color: '#1a1a1a',
+    color: palette.text,
     marginBottom: 12,
   },
   aboutText: {
     fontSize: 15,
-    color: '#666',
+    color: palette.subtleText,
     lineHeight: 24,
     textAlign: 'center',
   },
