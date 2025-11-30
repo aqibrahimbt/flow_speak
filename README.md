@@ -25,33 +25,30 @@ FlowSpeak is a companion app for building speaking confidence if you stutter. Ba
 
 ## ✨ Features
 
-### 📅 Daily Practice Dashboard
-- **Personalized daily plans** with 3-5 tasks tailored to your current phase
-- **Live progress tracking** with visual completion bars
-- **Streak counter** to celebrate consistency
-- **Animated task cards** with haptic feedback for an engaging experience
+### 📅 Daily Practice
+- **Auto-advancing daily plan**: opens on the right day automatically; Sundays are lighter (breath + log).
+- **12-month structured program**: breathing → technique → speaking → modification → micro-challenge → log; CBT/mindfulness blocks 2×/week from month 4.
+- **Task detail improvements**: per-step checkmarks, inline swap confirmation, session timer with haptics for time-bound tasks.
+- **“Why it matters” context** on core tasks so you know the therapeutic goal.
 
-### 🎯 Adaptive Task System
-- **Smart task generation** that responds to your habits, ratings, and progress
-- **Task swapping** – replace any task with a similar alternative if it doesn't fit your day
-- **Step-by-step guidance** with clear instructions and "why it matters" context
-- **Completion ratings** to help the app learn what works best for you
+### 🎯 Adaptive & Swaps
+- **Smart task generation (optional)** that adapts to ratings, recency, preferences, and day-of-week.
+- **Swaps always apply** (adaptive on/off) and show the replacement in place; alternatives avoid duplicates and match type/difficulty.
 
 ### 🧘 Practice & Reflection
-- **Free-form task browser** with filters by exercise type (breathing, speech, reading, mindfulness, real-world)
-- **Simple mood logging** to track your emotional journey
-- **On-demand practice** for when you want extra exercises
+- **Free practice browser** (breathing, speech, reading, mindfulness, exercise) with presets where categories were empty.
+- **Extra practice bucket** tracked separately from today’s plan.
+- **Mood logging with notes**, editable for today, tied into the daily log.
 
-### 📊 Progress & Insights
-- **365-day calendar view** showing your entire program journey
-- **Stats dashboard** with completion counts, milestones, and phase summaries
-- **Visual progress indicators** to see how far you've come
+### 📊 Insights & Stats
+- **Daily insight** blends ratings + moods with type-level feedback (e.g., “speech strongest lately”).
+- **Stats**: completion trend, ratings trend, mood trend (7/30-day), most-swapped tasks, and a today snapshot.
+- **Streaks and totals** based on completed tasks; mood/rating history surfaced in insights.
 
-### ⚙️ Customization & Control
-- **Toggle adaptive features** on/off based on your preference
-- **Full program overview** to see what's ahead
-- **Data reset option** for fresh starts
-- **Complete offline functionality** – no internet required
+### ⚙️ Control & Privacy
+- **Phase overview** for the full program (calendar screen removed for simplicity).
+- **Reset progress** fully clears local storage and cache; hydration/loading guarded.
+- **Offline-first**: all data stays on-device; no accounts or tracking.
 
 
 ### License & Usage
@@ -71,7 +68,7 @@ All your progress data is stored locally on your device – no servers, no track
 - **Expo SDK 54** + React Native 0.81
 - **Expo Router** for file-based navigation
 - **Bun** for package management
-- **State management**: Zustand + React Query
+- **State/data**: React Query + context
 - **Storage**: AsyncStorage (local-first)
 - **UI/UX**: Lucide icons, Expo Linear Gradient, haptic feedback
 

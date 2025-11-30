@@ -23,6 +23,7 @@ export interface DayProgram {
   phase: string;
   focus: string;
   tasks: Task[];
+  dayOfWeek: DayOfWeek;
 }
 
 const createTask = (
@@ -43,669 +44,563 @@ const createTask = (
   ...metadata,
 });
 
-const phases = [
-  { name: 'Foundation', days: 90, focus: 'Building awareness and breathing' },
-  { name: 'Technique', days: 90, focus: 'Speech techniques and control' },
-  { name: 'Practice', days: 90, focus: 'Real-world application' },
-  { name: 'Mastery', days: 95, focus: 'Confidence and fluency' },
+const phaseMap = [
+  { name: 'Foundation', start: 1, end: 90, focus: 'Awareness, breath, rate, easy onset, light contacts' },
+  { name: 'Build the Toolset', start: 91, end: 180, focus: 'Tool chaining, pull-outs, cancellations, CBT/mindfulness' },
+  { name: 'Transfer & Desensitize', start: 181, end: 270, focus: 'Real conversations, disclosure, reducing avoidance' },
+  { name: 'High-Stakes & Maintenance', start: 271, end: 365, focus: 'Group/meetings, talks, long-term maintenance' },
 ];
 
-const taskPool = {
-  breathing: [
-    createTask(
-      'breath-1',
-      'Diaphragmatic Breathing',
-      'Deep belly breathing to reduce tension',
-      'breathing',
-      5,
-      [
-        'Sit or lie down comfortably',
-        'Place one hand on your chest, one on your belly',
-        'Breathe in slowly through your nose for 4 counts',
-        'Feel your belly rise while chest stays still',
-        'Exhale slowly through your mouth for 6 counts',
-        'Repeat for 5 minutes',
-      ],
-      {
-        difficulty: 'beginner',
-        quarter: 1,
-        setting: 'private',
-        tags: ['breathing', 'relaxation', 'foundation'],
-        whyItMatters: 'Proper breathing is the foundation of fluent speech and reduces physical tension',
-        tips: ['Practice lying down first to feel the movement', 'Place a book on your belly to see it rise']
-      }
-    ),
-    createTask(
-      'breath-2',
-      'Box Breathing',
-      'Structured breathing for calm and focus',
-      'breathing',
-      5,
-      [
-        'Breathe in for 4 counts',
-        'Hold for 4 counts',
-        'Breathe out for 4 counts',
-        'Hold for 4 counts',
-        'Repeat the cycle 5-10 times',
-      ],
-      {
-        difficulty: 'easy',
-        quarter: 1,
-        setting: 'private',
-        tags: ['breathing', 'focus', 'anxiety-relief'],
-        whyItMatters: 'Box breathing calms the nervous system before speaking situations',
-        tips: ['Use this before phone calls or meetings', 'Visualize tracing a square']
-      }
-    ),
-    createTask(
-      'breath-3',
-      'Prolonged Exhalation',
-      'Extend your breath for speech control',
-      'breathing',
-      5,
-      [
-        'Breathe in normally for 3 counts',
-        'Exhale slowly and steadily for 8-10 counts',
-        'Focus on smooth, controlled air release',
-        'Repeat 10 times',
-      ],
-      {
-        difficulty: 'easy',
-        quarter: 1,
-        setting: 'private',
-        tags: ['breathing', 'speech-preparation', 'control'],
-        whyItMatters: 'Controlled exhalation powers smooth, sustained speech',
-        tips: ['Try exhaling on an "sss" sound', 'Imagine your breath is a stream']
-      }
-    ),
-  ],
-  speech: [
-    createTask(
-      'speech-1',
-      'Easy Onset',
-      'Start words gently and smoothly',
-      'speech',
-      10,
-      [
-        'Choose 5 words starting with vowels (e.g., "apple", "open")',
-        'Take a breath before each word',
-        'Start the word very gently, like a whisper',
-        'Gradually increase volume',
-        'Practice each word 5 times',
-      ],
-      {
-        difficulty: 'easy',
-        quarter: 1,
-        setting: 'private',
-        tags: ['speech-technique', 'easy-onset', 'vowels'],
-        whyItMatters: 'Easy onset prevents hard vocal cord closure, reducing blocks',
-        tips: ['Start with "ahhh" and transition to the word', 'Think of breathing out the word']
-      }
-    ),
-    createTask(
-      'speech-2',
-      'Light Articulatory Contact',
-      'Reduce tension in speech muscles',
-      'speech',
-      10,
-      [
-        'Practice words with p, b, t, d, k, g sounds',
-        'Touch your lips/tongue very lightly',
-        'Avoid pressing hard',
-        'Say each word slowly: "paper", "table", "good"',
-        'Repeat 10 times each',
-      ],
-      {
-        difficulty: 'medium',
-        quarter: 2,
-        setting: 'private',
-        tags: ['speech-technique', 'articulation', 'tension-reduction'],
-        whyItMatters: 'Light contact reduces muscle tension that can trigger stuttering',
-        tips: ['Imagine your tongue is a feather', 'Practice in slow motion first']
-      }
-    ),
-    createTask(
-      'speech-3',
-      'Stretched Speech',
-      'Slow, continuous speaking',
-      'speech',
-      10,
-      [
-        'Choose a simple sentence',
-        'Say it very slowly, stretching each word',
-        'Keep sound flowing between words',
-        'Gradually speed up while maintaining smoothness',
-        'Practice 3 sentences',
-      ],
-      {
-        difficulty: 'medium',
-        quarter: 2,
-        setting: 'private',
-        tags: ['speech-technique', 'fluency-shaping', 'continuous-speech'],
-        whyItMatters: 'Stretched speech trains smooth transitions between words',
-        tips: ['Start very slow - slower than feels natural', 'Connect words like beads on a string']
-      }
-    ),
-    createTask(
-      'speech-4',
-      'Pausing Practice',
-      'Strategic pauses for control',
-      'speech',
-      10,
-      [
-        'Read a short paragraph',
-        'Deliberately pause after each phrase',
-        'Use pauses to breathe and reset',
-        'Don\'t rush to fill silence',
-        'Practice for 10 minutes',
-      ],
-      {
-        difficulty: 'medium',
-        quarter: 2,
-        setting: 'private',
-        tags: ['speech-technique', 'pausing', 'control'],
-        whyItMatters: 'Strategic pausing gives you time to prepare and reduces rush',
-        tips: ['Pauses make you sound more confident', 'Count to 2 in your head during pauses']
-      }
-    ),
-    createTask(
-      'speech-5',
-      'Voluntary Stuttering',
-      'Intentionally stutter to reduce fear',
-      'speech',
-      15,
-      [
-        'Choose 3 easy words',
-        'Intentionally repeat the first sound 2-3 times',
-        'Do this calmly and with control',
-        'Practice in private first, then with trusted person',
-        'Notice how it feels different when controlled',
-      ],
-      {
-        difficulty: 'hard',
-        quarter: 2,
-        setting: 'private',
-        tags: ['desensitization', 'fear-reduction', 'stuttering-management'],
-        whyItMatters: 'Voluntary stuttering reduces fear and shame around stuttering',
-        tips: ['This feels weird at first - that\'s normal', 'You\'re in control of the stutter']
-      }
-    ),
-    createTask(
-      'speech-6',
-      'Conversation with Trusted Person',
-      'Apply techniques in real conversation',
-      'speech',
-      15,
-      [
-        'Choose someone you trust',
-        'Have a 10-minute conversation about your day',
-        'Use one technique (easy onset or light contact)',
-        'Don\'t worry about perfect fluency',
-        'Reflect on what felt different',
-      ],
-      {
-        difficulty: 'medium',
-        quarter: 3,
-        setting: 'trusted_person',
-        tags: ['real-world', 'conversation', 'technique-application'],
-        whyItMatters: 'Real conversations are where techniques become natural',
-        tips: ['Tell them you\'re practicing', 'Focus on connection, not perfection']
-      }
-    ),
-    createTask(
-      'speech-7',
-      'Phone Call Practice',
-      'Call a business with a simple question',
-      'speech',
-      10,
-      [
-        'Choose a low-pressure call (store hours, directions)',
-        'Write down what you\'ll say',
-        'Use box breathing before calling',
-        'Apply easy onset to the first word',
-        'Celebrate making the call',
-      ],
-      {
-        difficulty: 'hard',
-        quarter: 3,
-        setting: 'public',
-        tags: ['phone-calls', 'real-world', 'challenge'],
-        whyItMatters: 'Phone calls are common feared situations - facing them builds confidence',
-        tips: ['Script it out first', 'Remember: most calls last under a minute']
-      }
-    ),
-    createTask(
-      'speech-8',
-      'Ordering Practice',
-      'Order something at a cafe or restaurant',
-      'speech',
-      10,
-      [
-        'Choose a familiar place',
-        'Decide what you\'ll order in advance',
-        'Use pausing technique if needed',
-        'Make eye contact with the person',
-        'Don\'t apologize for stuttering',
-      ],
-      {
-        difficulty: 'hard',
-        quarter: 3,
-        setting: 'public',
-        tags: ['ordering', 'real-world', 'public-speaking'],
-        whyItMatters: 'Ordering is a daily situation - mastering it increases independence',
-        tips: ['Go at less busy times first', 'The staff wants to help you']
-      }
-    ),
-    createTask(
-      'speech-9',
-      'Group Conversation',
-      'Speak in a small group setting',
-      'speech',
-      20,
-      [
-        'Join a 3-4 person conversation',
-        'Contribute at least 3 times',
-        'Use techniques naturally',
-        'If you stutter, keep going',
-        'Notice others aren\'t judging',
-      ],
-      {
-        difficulty: 'expert',
-        quarter: 4,
-        setting: 'small_group',
-        tags: ['group-speaking', 'social', 'advanced'],
-        whyItMatters: 'Group conversations are complex - success here builds real confidence',
-        tips: ['You don\'t have to speak constantly', 'Quality over quantity']
-      }
-    ),
-  ],
-  reading: [
-    createTask(
-      'read-1',
-      'Solo Reading Practice',
-      'Build fluency through reading aloud',
-      'reading',
-      15,
-      [
-        'Choose a text you enjoy',
-        'Read aloud at a comfortable pace',
-        'Focus on smooth breathing',
-        'Don\'t worry about mistakes',
-        'Read for 15 minutes',
-      ],
-      {
-        difficulty: 'easy',
-        quarter: 1,
-        setting: 'private',
-        tags: ['reading', 'fluency', 'practice'],
-        whyItMatters: 'Reading aloud builds muscle memory for fluent speech patterns',
-        tips: ['Choose content that interests you', 'Speed doesn\'t matter']
-      }
-    ),
-    createTask(
-      'read-2',
-      'Choral Reading',
-      'Read along with an audiobook',
-      'reading',
-      15,
-      [
-        'Play an audiobook at normal speed',
-        'Read along out loud',
-        'Match the narrator\'s pace',
-        'Notice how fluency feels',
-        'Practice for 15 minutes',
-      ],
-      {
-        difficulty: 'easy',
-        quarter: 1,
-        setting: 'private',
-        tags: ['reading', 'choral-reading', 'fluency'],
-        whyItMatters: 'Choral reading often produces immediate fluency - it shows what\'s possible',
-        tips: ['Use free audiobooks from library apps', 'Start with books you know']
-      }
-    ),
-    createTask(
-      'read-3',
-      'Phrase Reading',
-      'Read in meaningful phrases',
-      'reading',
-      15,
-      [
-        'Mark natural pause points in text',
-        'Read one phrase at a time',
-        'Pause and breathe between phrases',
-        'Focus on thought groups',
-        'Read for 15 minutes',
-      ],
-      {
-        difficulty: 'medium',
-        quarter: 2,
-        setting: 'private',
-        tags: ['reading', 'phrasing', 'breathing'],
-        whyItMatters: 'Phrase reading teaches natural speech rhythm and breathing patterns',
-        tips: ['Mark phrases with slashes', 'Think of meaning, not just words']
-      }
-    ),
-    createTask(
-      'read-4',
-      'Reading to Someone',
-      'Read aloud to a trusted person',
-      'reading',
-      15,
-      [
-        'Choose a short story or article',
-        'Read to a family member or friend',
-        'Use your techniques',
-        'If you stutter, keep reading',
-        'Ask them what they remember from the story',
-      ],
-      {
-        difficulty: 'medium',
-        quarter: 3,
-        setting: 'trusted_person',
-        tags: ['reading', 'audience', 'real-world'],
-        whyItMatters: 'Reading to someone adds gentle pressure while staying structured',
-        tips: ['They\'re listening to the story, not judging speech', 'Pick engaging content']
-      }
-    ),
-  ],
-  mindfulness: [
-    createTask(
-      'mind-1',
-      'Body Scan',
-      'Release physical tension',
-      'mindfulness',
-      10,
-      [
-        'Lie down or sit comfortably',
-        'Close your eyes',
-        'Notice tension in jaw, neck, shoulders',
-        'Breathe into tense areas',
-        'Imagine tension melting away',
-        'Scan your whole body for 10 minutes',
-      ],
-      {
-        difficulty: 'beginner',
-        quarter: 1,
-        setting: 'private',
-        tags: ['mindfulness', 'tension-release', 'body-awareness'],
-        whyItMatters: 'Physical tension directly affects speech - awareness is the first step to release',
-        tips: ['Do this before bed for better sleep', 'Notice where you hold tension']
-      }
-    ),
-    createTask(
-      'mind-2',
-      'Acceptance Meditation',
-      'Accept stuttering without judgment',
-      'mindfulness',
-      10,
-      [
-        'Sit quietly for 10 minutes',
-        'Notice thoughts about speaking',
-        'Acknowledge fears without judgment',
-        'Remind yourself: "It\'s okay to stutter"',
-        'Practice self-compassion',
-      ],
-      {
-        difficulty: 'medium',
-        quarter: 2,
-        setting: 'private',
-        tags: ['mindfulness', 'acceptance', 'self-compassion'],
-        whyItMatters: 'Acceptance reduces the emotional pain of stuttering, which reduces stuttering',
-        tips: ['This is hard but powerful', 'You can\'t force acceptance - just practice noticing']
-      }
-    ),
-    createTask(
-      'mind-3',
-      'Positive Visualization',
-      'Imagine fluent, confident speaking',
-      'mindfulness',
-      10,
-      [
-        'Close your eyes',
-        'Imagine a speaking situation',
-        'See yourself speaking calmly and clearly',
-        'Feel the confidence in your body',
-        'Practice this visualization for 10 minutes',
-      ],
-      {
-        difficulty: 'easy',
-        quarter: 1,
-        setting: 'private',
-        tags: ['mindfulness', 'visualization', 'confidence'],
-        whyItMatters: 'Your brain rehearses during visualization - building positive associations',
-        tips: ['Make it vivid - add sounds, feelings, details', 'Visualize before challenging situations']
-      }
-    ),
-    createTask(
-      'mind-4',
-      'Gratitude Practice',
-      'Focus on speech successes',
-      'mindfulness',
-      10,
-      [
-        'Write down 3 speaking successes from this week',
-        'They can be small (said hello, made a call)',
-        'Describe how it felt',
-        'Thank yourself for the effort',
-        'Notice progress over time',
-      ],
-      {
-        difficulty: 'easy',
-        quarter: 3,
-        setting: 'private',
-        tags: ['gratitude', 'reflection', 'progress'],
-        whyItMatters: 'Focusing on successes rewires your brain away from fear',
-        tips: ['Keep a success journal', 'Small wins count']
-      }
-    ),
-  ],
-  exercise: [
-    createTask(
-      'exercise-1',
-      'Recorded Line Practice',
-      'Low-pressure phone practice',
-      'exercise',
-      10,
-      [
-        'Call a recorded information line (weather, time, etc.)',
-        'Practice speaking out loud as if ordering',
-        'Focus on techniques you\'ve learned',
-        'Build confidence in a safe environment',
-      ],
-      {
-        difficulty: 'easy',
-        quarter: 2,
-        setting: 'private',
-        tags: ['phone-practice', 'low-pressure', 'technique-application'],
-        whyItMatters: 'Recorded lines let you practice phone speaking without judgment',
-        tips: ['Nobody is listening - it\'s just for you', 'Try different techniques']
-      }
-    ),
-    createTask(
-      'exercise-2',
-      'Mirror Speaking',
-      'Observe yourself speaking',
-      'exercise',
-      10,
-      [
-        'Stand in front of a mirror',
-        'Talk about your day for 5 minutes',
-        'Watch your face and body language',
-        'Notice tension and consciously relax',
-        'Practice looking confident',
-      ],
-      {
-        difficulty: 'easy',
-        quarter: 1,
-        setting: 'private',
-        tags: ['self-observation', 'body-language', 'awareness'],
-        whyItMatters: 'Seeing yourself speak builds awareness and confidence',
-        tips: ['You might look more relaxed than you feel', 'Practice smiling']
-      }
-    ),
-    createTask(
-      'exercise-3',
-      'Challenging Words',
-      'Practice your difficult words',
-      'exercise',
-      10,
-      [
-        'List 10 words you find challenging',
-        'Practice each word 10 times',
-        'Use easy onset and light contact',
-        'Gradually speed up',
-        'Celebrate small victories',
-      ],
-      {
-        difficulty: 'medium',
-        quarter: 2,
-        setting: 'private',
-        tags: ['word-practice', 'feared-words', 'technique-application'],
-        whyItMatters: 'Facing feared words directly reduces their power over you',
-        tips: ['Your feared words will change over time', 'Practice makes them less scary']
-      }
-    ),
-    createTask(
-      'exercise-4',
-      'Extended Conversation',
-      'Real-world speaking practice',
-      'exercise',
-      15,
-      [
-        'Have a 15-minute conversation',
-        'With a friend, family member, or yourself',
-        'Focus on communication, not perfection',
-        'Use your techniques naturally',
-        'Reflect on what went well',
-      ],
-      {
-        difficulty: 'medium',
-        quarter: 3,
-        setting: 'trusted_person',
-        tags: ['conversation', 'real-world', 'technique-integration'],
-        whyItMatters: 'Extended conversations build stamina and make techniques automatic',
-        tips: ['Length matters less than connection', 'Notice when you forget about stuttering']
-      }
-    ),
-    createTask(
-      'exercise-5',
-      'Ask a Stranger',
-      'Ask someone for help or directions',
-      'exercise',
-      5,
-      [
-        'Find a friendly-looking stranger',
-        'Ask for the time, directions, or a recommendation',
-        'Use techniques if needed',
-        'Thank them and move on',
-        'Celebrate your courage',
-      ],
-      {
-        difficulty: 'hard',
-        quarter: 3,
-        setting: 'public',
-        tags: ['stranger-speaking', 'real-world', 'courage'],
-        whyItMatters: 'Strangers show us that most people are kind and patient',
-        tips: ['Choose someone who looks relaxed', 'Brief interactions are easiest']
-      }
-    ),
-    createTask(
-      'exercise-6',
-      'Tell a Story',
-      'Share a personal story with someone',
-      'exercise',
-      15,
-      [
-        'Choose a simple story from your life',
-        'Tell it to a friend or family member',
-        'Focus on the emotions and details',
-        'Use pausing for emphasis',
-        'Notice that they care about the story, not the stuttering',
-      ],
-      {
-        difficulty: 'medium',
-        quarter: 4,
-        setting: 'trusted_person',
-        tags: ['storytelling', 'connection', 'expression'],
-        whyItMatters: 'Storytelling is powerful - it shifts focus from speech to message',
-        tips: ['Pick a story you love telling', 'Emotion and passion reduce stuttering']
-      }
-    ),
-    createTask(
-      'exercise-7',
-      'Presentation Practice',
-      'Give a short presentation',
-      'exercise',
-      20,
-      [
-        'Choose a topic you know well',
-        'Prepare a 3-minute talk',
-        'Present to 1-2 people',
-        'Use notes if needed',
-        'Focus on sharing information, not perfect speech',
-      ],
-      {
-        difficulty: 'expert',
-        quarter: 4,
-        setting: 'small_group',
-        tags: ['presentation', 'public-speaking', 'advanced'],
-        whyItMatters: 'Presentations are peak challenges - success here is life-changing',
-        tips: ['Know your content well', 'Pausing makes you sound authoritative']
-      }
-    ),
-  ],
+const monthFocus: Record<number, string> = {
+  1: 'Install slow/prolonged speech + breath awareness',
+  2: 'Add easy onsets + light contacts',
+  3: 'Blend onsets/contacts with pausing; medium micro-challenges',
+  4: 'Tool chaining; scripted calls; start pull-outs/cancellations',
+  5: 'Pull-outs in live speech; daily voluntary stutters',
+  6: 'Mini-presentations; deliberate “hard” situations',
+  7: 'Transfer to real conversations; start disclosure',
+  8: 'Talks to 2+ people; public voluntary stuttering',
+  9: 'Attack avoidance situations; reflect after',
+  10: 'Prep and deliver 10–15 min talk; on-demand tool switching',
+  11: 'Practice feared settings; use disclosure; stay with stutters',
+  12: 'Design maintenance plan; watch for early warning signs',
 };
+
+const monthLengths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+const difficultyByMonth: Record<number, TaskDifficulty> = {
+  1: 'beginner',
+  2: 'easy',
+  3: 'easy',
+  4: 'medium',
+  5: 'medium',
+  6: 'medium',
+  7: 'hard',
+  8: 'hard',
+  9: 'hard',
+  10: 'expert',
+  11: 'expert',
+  12: 'expert',
+};
+
+const settingByMonth: Record<number, TaskSetting> = {
+  1: 'trusted_person',
+  2: 'trusted_person',
+  3: 'public',
+  4: 'public',
+  5: 'public',
+  6: 'public',
+  7: 'public',
+  8: 'public',
+  9: 'public',
+  10: 'public',
+  11: 'public',
+  12: 'public',
+};
+
+const getQuarter = (day: number) => {
+  if (day <= 90) return 1;
+  if (day <= 180) return 2;
+  if (day <= 270) return 3;
+  return 4;
+};
+
+const dayNames: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const getMonthForDay = (day: number) => {
+  let remaining = day;
+  for (let i = 0; i < monthLengths.length; i++) {
+    if (remaining <= monthLengths[i]) {
+      return i + 1;
+    }
+    remaining -= monthLengths[i];
+  }
+  return 12;
+};
+
+const techniqueBlockForMonth = (month: number) => {
+  switch (month) {
+    case 1:
+      return createTask(
+        'technique-m1',
+        'Technique Drill: Prolonged + Pausing',
+        'Install slow, prolonged speech with deliberate pausing.',
+        'speech',
+        12,
+        [
+          '5 min: prolonged speech on single words → short phrases (10–20 simple phrases).',
+          '5–7 min: read aloud very slowly; pause at punctuation; keep airflow steady.',
+          'Stay relaxed; aim for smooth, slightly slower-than-normal speech.',
+        ],
+        { difficulty: 'beginner', quarter: 1, tags: ['rate', 'pausing', 'awareness'], whyItMatters: 'Slow, deliberate speech builds breath-sound coordination and reduces rush that fuels blocks.' }
+      );
+    case 2:
+      return createTask(
+        'technique-m2',
+        'Technique Drill: Easy Onset + Light Contacts',
+        'Add gentle voice starts and soft consonant contacts.',
+        'speech',
+        12,
+        [
+          '5 min: easy onsets on vowel-initial words/phrases (“hhh-apple”).',
+          '5 min: light contacts on plosives (p, b, t, d, k, g) with soft touch.',
+          'Combine in reading: slow rate + pausing + easy onset.',
+        ],
+        { difficulty: 'easy', quarter: 1, tags: ['easy-onset', 'light-contact', 'pausing'], whyItMatters: 'Gentle voice starts and soft consonants reduce vocal fold and articulator tension that triggers blocks.' }
+      );
+    case 3:
+      return createTask(
+        'technique-m3',
+        'Technique Drill: Alternating Focus',
+        'Alternate between onsets + prolonged speech and light contacts + phrasing.',
+        'speech',
+        12,
+        [
+          'Day A: easy onset + prolonged voice across 2–3 words.',
+          'Day B: light contacts + pausing/phrasing (4–7 word groups).',
+          'Keep breath low/steady; aim for relaxed rhythm.',
+        ],
+        { difficulty: 'easy', quarter: 1, tags: ['alternating', 'phrasing'], whyItMatters: 'Switching focus keeps skills flexible and prepares you to combine them naturally.' }
+      );
+    case 4:
+      return createTask(
+        'technique-m4',
+        'Technique Drill: Tool Chaining',
+        'Chain shaping tools smoothly.',
+        'speech',
+        12,
+        [
+          'Pattern: easy onset → prolonged voice across 2–3 words → light contacts → pause → repeat.',
+          '1–2 min each: run the pattern on short phrases.',
+          'Finish with 3–5 minutes of “over-learned” slow reading (exaggerate the pattern).',
+        ],
+        { difficulty: 'medium', quarter: 2, tags: ['tool-chaining', 'pausing'], whyItMatters: 'Chaining skills builds automaticity so you can call on multiple tools in real speech.' }
+      );
+    case 5:
+      return createTask(
+        'technique-m5',
+        'Technique Drill: Over-Learning + Pull-outs',
+        'Blend shaping with first pull-outs.',
+        'speech',
+        12,
+        [
+          '5 min: extremely slow reading with over-clear onsets/contacts.',
+          '5 min: simulate a block, then exit with pull-out (reduce tension, slow/prolong, light contact).',
+          'End with normal-speed sentence while keeping airflow smooth.',
+        ],
+        { difficulty: 'medium', quarter: 2, tags: ['pull-out', 'over-learning'], whyItMatters: 'Practicing exits from mock blocks teaches you to stay present and release tension instead of forcing through.' }
+      );
+    case 6:
+      return createTask(
+        'technique-m6',
+        'Technique Drill: Mixed Tools',
+        'Mix shaping and modification in one run.',
+        'speech',
+        12,
+        [
+          '5 min: slow → moderate rate reading while keeping easy onsets and pausing.',
+          '5–7 min: insert 3–5 intentional pull-outs/cancellations in reading.',
+          'Stay calm; let airflow lead, not effort.',
+        ],
+        { difficulty: 'medium', quarter: 2, tags: ['pull-out', 'cancellation', 'rate'], whyItMatters: 'Mixing shaping and modification simulates real-life needs to adjust mid-sentence.' }
+      );
+    case 7:
+    case 8:
+    case 9:
+      return createTask(
+        'technique-m7',
+        'Technique Drill: Naturalness & Control',
+        'Speed up while keeping smoothness and low tension.',
+        'speech',
+        12,
+        [
+          'Start exaggerated slow; gradually move to natural rate across 3–4 minutes.',
+          'Randomly add pauses and restart with easy onset.',
+          'Include 2–3 light pull-outs in reading or monologue.',
+        ],
+        { difficulty: 'hard', quarter: 3, tags: ['naturalness', 'rate', 'pull-out'], whyItMatters: 'Brings fluency tools to a more natural pace while keeping control available on demand.' }
+      );
+    default:
+      return createTask(
+        'technique-m10',
+        'Technique Drill: On-Demand Switching',
+        'Quickly switch tools in higher-pressure prep.',
+        'speech',
+        10,
+        [
+          'Randomly cue yourself: “slow for this sentence,” “easy onset start,” “light contact on consonants.”',
+          'Restart mid-sentence with gentle onset after a deliberate pause.',
+          'End with 60 seconds of normal-rate speech while keeping tension low.',
+        ],
+        { difficulty: 'expert', quarter: 4, tags: ['on-demand', 'rate', 'restart'], whyItMatters: 'Practices rapid tool switching under higher demand so you can stay composed in tougher contexts.' }
+      );
+  }
+};
+
+const speakingBlockForMonth = (month: number) => {
+  if (month === 1) {
+    return createTask(
+      'speak-m1',
+      'Structured Speaking: Monologue + Reading',
+      'Low-pressure monologue and reading with recording.',
+      'speech',
+      12,
+      [
+        '5 min monologue alone about your day; record on phone.',
+        '5–7 min reading aloud (news/book) using slow rate + pauses.',
+        'Pick one clip per week to replay and note tension spots.',
+      ],
+      { difficulty: 'beginner', quarter: 1, tags: ['monologue', 'recording'], whyItMatters: 'Private practice lets you build control without social pressure while hearing your own improvements.' }
+    );
+  }
+  if (month === 2) {
+    return createTask(
+      'speak-m2',
+      'Structured Speaking: Recorded Monologue',
+      'Build consistency with daily recordings.',
+      'speech',
+      12,
+      [
+        '10–12 min monologue on a topic (what you did last week).',
+        'Use slow rate + pausing + easy onset; keep airflow steady.',
+        'Once per week, listen back and jot 2 wins / 2 tension moments.',
+      ],
+      { difficulty: 'easy', quarter: 1, tags: ['monologue', 'recording', 'review'], whyItMatters: 'Recording and reviewing helps you spot tension patterns and notice progress objectively.' }
+    );
+  }
+  if (month === 3) {
+    return createTask(
+      'speak-m3',
+      'Structured Speaking: Alternate Focus',
+      'Alternate onsets/contacts focus across days.',
+      'speech',
+      12,
+      [
+        'Day A: monologue with easy onset + prolonged flow.',
+        'Day B: monologue with light contacts + phrasing.',
+        'Record 2–3 times per week; review weekly.',
+      ],
+      { difficulty: 'easy', quarter: 1, tags: ['monologue', 'alternating'], whyItMatters: 'Alternating focus builds flexibility so you can combine tools smoothly later.' }
+    );
+  }
+  if (month === 4 || month === 5) {
+    return createTask(
+      'speak-m4',
+      'Structured Speaking: Dialogues + Mini-Presos',
+      'Mix monologues, mock dialogues, and mini-presentations.',
+      'speech',
+      12,
+      [
+        '2–3 days/week: recorded monologue (10–12 min).',
+        '2–3 days/week: mock conversations (write 5–10 lines, read both parts).',
+        '1 day/week: 5 min recorded “teach someone” mini-presentation.',
+      ],
+      { difficulty: 'medium', quarter: 2, tags: ['dialogue', 'presentation', 'recording'], whyItMatters: 'Moving into dialogues and teaching builds interaction skills and prepares you for real conversations.' }
+    );
+  }
+  if (month === 6) {
+    return createTask(
+      'speak-m6',
+      'Structured Speaking: Present & Review',
+      'Practice mini-presentations and reviews.',
+      'speech',
+      12,
+      [
+        '3 days/week: mock conversations or role-plays (booking, requesting).',
+        '2 days/week: 5–10 min mini-presentation; record one.',
+        'Weekly: re-listen, note pull-out/cancellation attempts.',
+      ],
+      { difficulty: 'medium', quarter: 2, tags: ['presentation', 'role-play'], whyItMatters: 'Role-plays and presentations simulate real pressure and let you rehearse tool use before going live.' }
+    );
+  }
+  if (month === 7 || month === 8 || month === 9) {
+    return createTask(
+      'speak-m7',
+      'Structured Speaking: Real Conversations',
+      'Use real conversations as the structured task.',
+      'speech',
+      12,
+      [
+        '3 days/week: real conversation as the “structured” task (meetings, neighbors, coworkers).',
+        '2 days/week: mini-presentation recorded on a tougher topic.',
+        'After each real interaction: note one tool you used or could have used.',
+      ],
+      { difficulty: 'hard', quarter: 3, tags: ['conversation', 'transfer', 'recording'], whyItMatters: 'Using the structured slot for real conversations accelerates transfer and desensitization.' }
+    );
+  }
+  return createTask(
+    'speak-m10',
+    'Structured Speaking: High-Stakes Reps',
+    'Practice for talks, meetings, and harder calls.',
+    'speech',
+    12,
+    [
+      'At least 3 days/week: mildly uncomfortable task (speak in group, make a call, ask a follow-up question).',
+      'Prep lines, then deliver with tools on demand.',
+      'If prepping a talk: outline → practice daily → deliver → review video.',
+    ],
+    { difficulty: 'expert', quarter: 4, tags: ['high-stakes', 'meeting', 'talk'], whyItMatters: 'Higher-stakes practice cements your ability to stay present, use tools quickly, and avoid old escape behaviors.' }
+  );
+};
+
+const modificationBlockForMonth = (month: number) => {
+  if (month === 1 || month === 2) {
+    return createTask(
+      'mod-m1',
+      'Stuttering Modification: Voluntary Stuttering',
+      'Reduce fear via gentle pseudostuttering.',
+      'speech',
+      6,
+      [
+        '5 gentle voluntary stutters per day in practice (alone/reading).',
+        'Pick one word like “s-s-speak”; keep it calm and controlled.',
+        'Goal: feel a stutter without extra tension or self-criticism.',
+      ],
+      { difficulty: 'beginner', quarter: 1, tags: ['voluntary-stutter', 'desensitization'], whyItMatters: 'Intentional stutters reduce fear and teach you to stay relaxed when a block starts.' }
+    );
+  }
+  if (month === 3) {
+    return createTask(
+      'mod-m3',
+      'Stuttering Modification: Light Desensitization',
+      'Blend voluntary stuttering into practice with calm continuations.',
+      'speech',
+      6,
+      [
+        '5 voluntary stutters; continue speaking without backing off.',
+        'Notice body tension; let shoulders/jaw stay loose.',
+        'Remind yourself: goal is control, not perfection.',
+      ],
+      { difficulty: 'easy', quarter: 1, tags: ['voluntary-stutter', 'awareness'], whyItMatters: 'Keeping your place after a deliberate stutter builds resilience and reduces avoidance.' }
+    );
+  }
+  if (month === 4 || month === 5) {
+    return createTask(
+      'mod-m4',
+      'Stuttering Modification: Pull-outs + Cancellations',
+      'Practice exiting or redoing stutters calmly.',
+      'speech',
+      8,
+      [
+        'In reading/monologue: when you stutter, decrease tension and slide out with prolonged speech (pull-out).',
+        'If the stutter was big: pause 1–2s, breathe, repeat the word with easy onset (cancellation).',
+        'Simulate blocks if none occur; do 3–5 reps.',
+      ],
+      { difficulty: 'medium', quarter: 2, tags: ['pull-out', 'cancellation'], whyItMatters: 'Practicing exits and redo’s trains calm responses instead of force or avoidance.' }
+    );
+  }
+  if (month === 6) {
+    return createTask(
+      'mod-m6',
+      'Stuttering Modification: Live Pull-outs',
+      'Bring modification into role-plays and presentations.',
+      'speech',
+      8,
+      [
+        'Role-play or mini-presentation: if you stutter, keep eye contact and use pull-out or cancellation.',
+        'After the task, note one instance to improve next time.',
+        'Stay in the moment; no word swaps.',
+      ],
+      { difficulty: 'medium', quarter: 2, tags: ['pull-out', 'presentation'], whyItMatters: 'Applying modification tools in simulated pressure bridges practice to real use.' }
+    );
+  }
+  if (month === 7 || month === 8 || month === 9) {
+    return createTask(
+      'mod-m7',
+      'Stuttering Modification: Real Life Reps',
+      'Use modification tools during real conversations.',
+      'speech',
+      8,
+      [
+        'In today’s real interaction, allow at least one pull-out or cancellation instead of pushing through.',
+        'Log one example (success or miss) right after.',
+        'Keep eye contact; avoid escape behaviors.',
+      ],
+      { difficulty: 'hard', quarter: 3, tags: ['pull-out', 'real-life'], whyItMatters: 'Using tools during real conversations is the key to desensitization and control in daily life.' }
+    );
+  }
+  return createTask(
+    'mod-m10',
+    'Stuttering Modification: High-Stakes Calm',
+    'Quality of response over perfection.',
+    'speech',
+    8,
+    [
+      'In higher-pressure tasks, aim for: no word swaps, no escape behaviors.',
+      'If you stutter: soften tension, use pull-out or cancellation, continue the message.',
+      'Log how often you stayed present versus avoided.',
+    ],
+    { difficulty: 'expert', quarter: 4, tags: ['high-stakes', 'pull-out', 'cancellation'], whyItMatters: 'In tougher settings, responding calmly to stutters preserves communication and confidence.' }
+  );
+};
+
+const microChallengeForMonth = (month: number, day: number) => {
+  const baseInstructions = [
+    'Pick one real-life micro-challenge for today and do it intentionally.',
+    'Use your tools (slow rate, pausing, onsets/contacts) and allow stutters without hiding.',
+  ];
+
+  let options: string[] = [];
+  if (month === 1) {
+    options = [
+      'Say hello + one sentence to a shop assistant.',
+      'Ask a simple question like “What time do you close?”',
+      'Make one short call to friend/family (week 3–4).',
+    ];
+  } else if (month === 2) {
+    options = [
+      'One planned interaction using slow rate + pausing.',
+      'Order something in person while allowing pauses.',
+    ];
+  } else if (month === 3) {
+    options = [
+      'Two short phone calls this week; do one today if pending.',
+      'Deliberately stutter mildly on one word in a safe setting.',
+    ];
+  } else if (month === 4) {
+    options = [
+      'Make a scripted medium-stakes call (doctor/restaurant).',
+      'Read your script once, then call using tools.',
+    ];
+  } else if (month === 5) {
+    options = [
+      'Use a pull-out in a live 5–10 min conversation.',
+      'Do one voluntary stutter in public today.',
+    ];
+  } else if (month === 6) {
+    options = [
+      'Deliver a 5–10 min mini-presentation to someone (or record).',
+      'Pick a “hard” situation (ask a stranger for directions) and do it.',
+    ];
+  } else if (month === 7) {
+    options = [
+      'Speak once in a meeting/group; plan line → deliver.',
+      'Use your disclosure script once this week (do it today if pending).',
+    ];
+  } else if (month === 8) {
+    options = [
+      'Talk 5–10 min to 2+ people (friends/coworkers/online).',
+      'Do 1–2 voluntary stutters in a public interaction.',
+    ];
+  } else if (month === 9) {
+    options = [
+      'Pick one avoidance situation and do it (call instead of email).',
+      'Afterward, spend 10 min reflecting: what happened vs feared?',
+    ];
+  } else if (month === 10) {
+    options = [
+      'Work on your 10–15 min talk: outline/practice/deliver/review (pick today’s step).',
+      'In any conversation, switch tools on demand (slow a sentence, easy onset restart).',
+    ];
+  } else if (month === 11) {
+    options = [
+      'Enter a feared setting (formal meeting/interview practice); speak at least twice.',
+      'Use your disclosure line once if appropriate.',
+    ];
+  } else {
+    options = [
+      'Draft or refine your maintenance plan (weekly routine, warning signs, response plan).',
+      'Do one exposure + one technique refresh to keep skills alive.',
+    ];
+  }
+
+  return createTask(
+    `micro-${month}-${day}`,
+    'Micro-Challenge',
+    'Short real-world action to build transfer and desensitization.',
+    'exercise',
+    5,
+    [...baseInstructions, ...options],
+    { difficulty: difficultyByMonth[month], setting: settingByMonth[month], quarter: getQuarter(day), tags: ['challenge', 'transfer'] }
+  );
+};
+
+const breathBlock = (day: number) =>
+  createTask(
+    `breath-${day}`,
+    'Body + Breath Reset',
+    'Loosen tension and anchor breath support.',
+    'breathing',
+    5,
+    [
+      '2 min: neck/shoulder/jaw loosening (slow rolls, gentle stretches).',
+      '3 min: diaphragmatic breathing: in 4, hold 1, out 6–8; belly moves, chest stays quieter.',
+    ],
+    { difficulty: day <= 180 ? 'beginner' : 'easy', quarter: getQuarter(day), setting: 'private', tags: ['breath', 'tension-release'] }
+  );
+
+const logBlock = (day: number) =>
+  createTask(
+    `log-${day}`,
+    'Log + Plan',
+    'Reflect to reinforce learning.',
+    'mindfulness',
+    5,
+    [
+      'Rate today: stuttering 0–10, tension 0–10, avoidance 0–10.',
+      'Write 3 bullets: what went well, what was hard, one micro-challenge for tomorrow.',
+      'If you stuttered: note one tool you used or will try next time.',
+    ],
+    { difficulty: 'easy', quarter: getQuarter(day), tags: ['reflection', 'logging'] }
+  );
+
+const cbtBlock = (day: number) =>
+  createTask(
+    `cbt-${day}`,
+    'Mindfulness + Thought Record',
+    'Short cognitive/mindfulness check-in to reduce fear and avoidance.',
+    'mindfulness',
+    10,
+    [
+      '5 min mindful breathing: notice bodily tension and let shoulders/jaw soften.',
+      'Write one recent speaking situation: emotion, automatic thought, evidence for/against, balanced response.',
+      'Set one intention for the next challenge (e.g., allow a pull-out, keep eye contact).',
+    ],
+    {
+      difficulty: 'medium',
+      quarter: getQuarter(day),
+      tags: ['mindfulness', 'cbt', 'reflection'],
+      whyItMatters: 'Regular cognitive work reduces fear/avoidance and keeps you responding calmly to stutters.',
+    }
+  );
 
 export const generateYearProgram = (): DayProgram[] => {
   const program: DayProgram[] = [];
-  let currentDay = 1;
 
-  for (const phase of phases) {
-    for (let dayInPhase = 1; dayInPhase <= phase.days; dayInPhase++) {
-      const tasks: Task[] = [];
-      
-      if (currentDay <= 30) {
-        tasks.push(taskPool.breathing[0]);
-        tasks.push(taskPool.mindfulness[0]);
-        tasks.push(taskPool.reading[0]);
-      } else if (currentDay <= 60) {
-        tasks.push(taskPool.breathing[1]);
-        tasks.push(taskPool.speech[0]);
-        tasks.push(taskPool.reading[0]);
-        tasks.push(taskPool.mindfulness[1]);
-      } else if (currentDay <= 90) {
-        tasks.push(taskPool.breathing[2]);
-        tasks.push(taskPool.speech[1]);
-        tasks.push(taskPool.reading[1]);
-        tasks.push(taskPool.exercise[0]);
-      } else if (currentDay <= 150) {
-        tasks.push(taskPool.breathing[currentDay % 3]);
-        tasks.push(taskPool.speech[2]);
-        tasks.push(taskPool.reading[1]);
-        tasks.push(taskPool.exercise[1]);
-      } else if (currentDay <= 240) {
-        tasks.push(taskPool.breathing[currentDay % 3]);
-        tasks.push(taskPool.speech[3]);
-        tasks.push(taskPool.reading[2]);
-        tasks.push(taskPool.exercise[2]);
-      } else {
-        tasks.push(taskPool.breathing[currentDay % 3]);
-        tasks.push(taskPool.speech[currentDay % 4]);
-        tasks.push(taskPool.reading[currentDay % 3]);
-        tasks.push(taskPool.exercise[3]);
-        tasks.push(taskPool.mindfulness[2]);
-      }
+  for (let day = 1; day <= 365; day++) {
+    const month = getMonthForDay(day);
+    const dayOfWeek = dayNames[(day - 1) % 7];
+    const phase = phaseMap.find(p => day >= p.start && day <= p.end) || phaseMap[phaseMap.length - 1];
+    const focus = `${phase.focus} • ${monthFocus[month]}`;
+    const technique = techniqueBlockForMonth(month);
+    const speaking = speakingBlockForMonth(month);
+    const modification = modificationBlockForMonth(month);
+    const restDay =
+      dayOfWeek === 'Sunday' ? [
+        breathBlock(day),
+        logBlock(day),
+      ] : [];
 
-      program.push({
-        day: currentDay,
-        phase: phase.name,
-        focus: phase.focus,
-        tasks,
-      });
+    const shouldAddCbt = month >= 4 && (dayOfWeek === 'Tuesday' || dayOfWeek === 'Friday') && restDay.length === 0;
+    const cbtTask = shouldAddCbt ? [{ ...cbtBlock(day), id: `cbt-${day}` }] : [];
 
-      currentDay++;
-    }
+    const tasks: Task[] = restDay.length > 0 ? restDay : [
+      breathBlock(day),
+      { ...technique, id: `${technique.id}-d${day}` },
+      { ...speaking, id: `${speaking.id}-d${day}` },
+      ...cbtTask,
+      { ...modification, id: `${modification.id}-d${day}` },
+      microChallengeForMonth(month, day),
+      logBlock(day),
+    ];
+
+    program.push({
+      day,
+      phase: phase.name,
+      focus,
+      tasks,
+      dayOfWeek,
+    });
   }
 
   return program;

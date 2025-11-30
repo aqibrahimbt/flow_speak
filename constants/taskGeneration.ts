@@ -197,6 +197,7 @@ export const getAlternativeTask = (
   
   let alternatives = allTasks.filter(task => 
     task.id !== currentTask.id &&
+    task.title !== currentTask.title &&
     task.type === currentTask.type &&
     !alreadyUsedTaskIds.includes(task.id)
   );
@@ -213,21 +214,68 @@ export const getAlternativeTask = (
   return selectRandomTask(alternatives);
 };
 
-export const createDailyInsight = (ratings: TaskRating[], tasks: Task[]): string => {
-  if (ratings.length === 0) {
+export const createDailyInsight = (
+  ratings: TaskRating[],
+  tasks: Task[],
+  moods: { day: number; mood: string }[]
+): string => {
+  const recentRatings = ratings.slice(-7);
+  const recentMoods = moods.slice(-7);
+
+  const avgRating = recentRatings.length
+    ? recentRatings.reduce((sum, r) => sum + r.rating, 0) / recentRatings.length
+    : null;
+
+  const moodScore = (mood: string) => {
+    switch (mood) {
+      case 'great': return 5;
+      case 'good': return 4;
+      case 'okay': return 3;
+      case 'struggling': return 2;
+      case 'difficult': return 1;
+      default: return 3;
+    }
+  };
+
+  const avgMood = recentMoods.length
+    ? recentMoods.reduce((sum, m) => sum + moodScore(m.mood), 0) / recentMoods.length
+    : null;
+
+  const typeAverages: Record<string, number> = {};
+  recentRatings.forEach(r => {
+    const task = tasks.find(t => t.id === r.taskId);
+    if (task) {
+      typeAverages[task.type] = (typeAverages[task.type] || 0) + r.rating;
+    }
+  });
+  Object.keys(typeAverages).forEach(key => {
+    const count = recentRatings.filter(r => tasks.find(t => t.id === r.taskId)?.type === key).length;
+    if (count > 0) typeAverages[key] = typeAverages[key] / count;
+  });
+
+  const bestType = Object.entries(typeAverages).sort((a, b) => b[1] - a[1])[0];
+  const bestTypeText = bestType ? `Your ${bestType[0]} tasks feel strongest lately.` : null;
+
+  if (!avgRating && !avgMood) {
     return "You're just getting started. Focus on building consistency.";
   }
-  
-  const recent = ratings.slice(-7);
-  const avgRating = recent.reduce((sum, r) => sum + r.rating, 0) / recent.length;
-  
-  if (avgRating >= 4.5) {
-    return "You're crushing it! Your confidence is growing. Ready for bigger challenges?";
-  } else if (avgRating >= 3.5) {
-    return "Great progress! You're building real skills. Keep the momentum going.";
-  } else if (avgRating >= 2.5) {
-    return "You're doing the work, even when it's hard. That's real courage.";
-  } else {
-    return "This week was challenging. Remember: progress isn't linear. Be kind to yourself.";
+
+  let moodText = '';
+  if (avgMood !== null) {
+    if (avgMood >= 4.5) moodText = 'Mood is high—bottle this confidence.';
+    else if (avgMood >= 3.5) moodText = 'Mood is steady—keep the routines going.';
+    else if (avgMood >= 2.5) moodText = 'Some rough patches—pace yourself and stay curious.';
+    else moodText = 'Tough week—double down on breathing and gentle starts.';
   }
+
+  let ratingText = '';
+  if (avgRating !== null) {
+    if (avgRating >= 4.5) ratingText = 'Technique feels easy—ready for bigger challenges.';
+    else if (avgRating >= 3.5) ratingText = 'Solid progress—stay with the plan and exposures.';
+    else if (avgRating >= 2.5) ratingText = 'Mixed results—focus on one tool per task.';
+    else ratingText = 'Hard stretch—slow down, use pull-outs, and lower pressure.';
+  }
+
+  const parts = [ratingText, moodText, bestTypeText].filter(Boolean);
+  return parts.join(' ');
 };

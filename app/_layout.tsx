@@ -13,7 +13,6 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="calendar" />
       <Stack.Screen name="stats" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="practice" />

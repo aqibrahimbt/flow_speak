@@ -1,7 +1,7 @@
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { YEAR_PROGRAM, type Task } from '@/constants/program';
 import type { TaskRating, UserPreferences, TaskSwap } from '@/constants/taskGeneration';
 import { 
@@ -21,6 +21,12 @@ export interface CompletedTask {
 
 export type MoodType = 'great' | 'good' | 'okay' | 'struggling' | 'difficult';
 
+export interface ExtraPractice {
+  taskId: string;
+  day: number;
+  completedAt: number;
+}
+
 export interface DayMood {
   day: number;
   mood: MoodType;
@@ -38,9 +44,16 @@ export interface UserProgress {
   preferences: UserPreferences;
   swaps: TaskSwap[];
   useAdaptiveTasks: boolean;
+  extraPractice: ExtraPractice[];
+  version: number;
 }
 
 const STORAGE_KEY = '@flowspeak_progress';
+const CURRENT_DATA_VERSION = 1;
+
+const ensureArray = <T,>(value: unknown, fallback: T[]): T[] => {
+  return Array.isArray(value) ? (value as T[]) : fallback;
+};
 
 const defaultProgress: UserProgress = {
   currentDay: 1,
@@ -58,38 +71,130 @@ const defaultProgress: UserProgress = {
   },
   swaps: [],
   useAdaptiveTasks: false,
+  extraPractice: [],
+  version: CURRENT_DATA_VERSION,
+};
+
+const migrateProgress = (stored: unknown): UserProgress => {
+  if (!stored || typeof stored !== 'object') {
+    return defaultProgress;
+  }
+
+  const progress = stored as Partial<UserProgress>;
+  const preferences = progress.preferences || defaultProgress.preferences;
+
+  const migrated: UserProgress = {
+    ...defaultProgress,
+    ...progress,
+    preferences: {
+      ...defaultProgress.preferences,
+      ...preferences,
+      fearedSituations: ensureArray(preferences.fearedSituations, []),
+      availableTimeSlots: ensureArray(preferences.availableTimeSlots, defaultProgress.preferences.availableTimeSlots),
+      supportPeople: ensureArray(preferences.supportPeople, []),
+      fearedWords: ensureArray(preferences.fearedWords, []),
+      fearedSounds: ensureArray(preferences.fearedSounds, []),
+    },
+    completedTasks: ensureArray(progress.completedTasks, []),
+    moods: ensureArray(progress.moods, []),
+    ratings: ensureArray(progress.ratings, []),
+    swaps: ensureArray(progress.swaps, []),
+    extraPractice: ensureArray(progress.extraPractice, []),
+    version: CURRENT_DATA_VERSION,
+  };
+
+  return migrated;
 };
 
 export const [FlowSpeakProvider, useFlowSpeak] = createContextHook(() => {
   const [progress, setProgress] = useState<UserProgress>(defaultProgress);
+  const [loadError, setLoadError] = useState<Error | null>(null);
+  const [saveError, setSaveError] = useState<Error | null>(null);
+  const [adaptiveCache, setAdaptiveCache] = useState<Record<number, Task[]>>({});
+  const autoAdvanceRef = useRef(false);
+  const queryClient = useQueryClient();
 
   const progressQuery = useQuery({
     queryKey: ['flowspeak-progress'],
     queryFn: async () => {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return parsed;
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const migrated = migrateProgress(parsed);
+          if ((parsed as { version?: number }).version !== migrated.version) {
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+          }
+          return migrated;
+        }
+        return defaultProgress;
+      } catch (error) {
+        throw error instanceof Error ? error : new Error('Failed to load progress');
       }
-      return defaultProgress;
+    },
+    retry: 1,
+    onError: (error) => {
+      setLoadError(error instanceof Error ? error : new Error('Failed to load progress'));
     },
   });
 
   const saveMutation = useMutation({
     mutationFn: async (newProgress: UserProgress) => {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newProgress));
-      return newProgress;
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newProgress));
+        return newProgress;
+      } catch (error) {
+        throw error instanceof Error ? error : new Error('Failed to save progress');
+      }
     },
     onSuccess: (data) => {
+      setSaveError(null);
       setProgress(data);
+    },
+    onError: (error) => {
+      setSaveError(error instanceof Error ? error : new Error('Failed to save progress'));
     },
   });
 
   useEffect(() => {
     if (progressQuery.data) {
       setProgress(progressQuery.data);
+      setLoadError(null);
     }
   }, [progressQuery.data]);
+
+  useEffect(() => {
+    if (progressQuery.isSuccess) {
+      setLoadError(null);
+    }
+  }, [progressQuery.isSuccess]);
+
+  // Auto-advance day based on calendar time since lastActiveDate
+  useEffect(() => {
+    if (!progressQuery.isSuccess || saveMutation.isPending) return;
+
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const lastDayIndex = Math.floor(progress.lastActiveDate / dayMs);
+    const currentDayIndex = Math.floor(now / dayMs);
+    const deltaDays = currentDayIndex - lastDayIndex;
+
+    if (deltaDays > 0 && !autoAdvanceRef.current) {
+      autoAdvanceRef.current = true;
+      const nextDay = Math.min(365, progress.currentDay + deltaDays);
+      const updatedProgress: UserProgress = {
+        ...progress,
+        currentDay: nextDay,
+        lastActiveDate: now,
+      };
+      setAdaptiveCache({});
+      saveMutation.mutate(updatedProgress, {
+        onSettled: () => {
+          autoAdvanceRef.current = false;
+        },
+      });
+    }
+  }, [progress, progressQuery.isSuccess, saveMutation]);
 
   const allTasks = useMemo(() => {
     const tasks: Task[] = [];
@@ -104,52 +209,63 @@ export const [FlowSpeakProvider, useFlowSpeak] = createContextHook(() => {
   }, []);
 
   const currentDayProgram = useMemo(() => {
-    if (!progress.useAdaptiveTasks) {
-      return YEAR_PROGRAM.find(p => p.day === progress.currentDay) || YEAR_PROGRAM[0];
-    }
-    
     const baseProgram = YEAR_PROGRAM.find(p => p.day === progress.currentDay) || YEAR_PROGRAM[0];
-    const completedTaskIds = progress.completedTasks
-      .slice(-20)
-      .map(ct => ct.taskId);
-    
-    const currentDate = new Date(progress.startDate + (progress.currentDay - 1) * 24 * 60 * 60 * 1000);
-    const dayOfWeek = getDayOfWeek(currentDate);
-    
+
+    const cached = progress.useAdaptiveTasks ? adaptiveCache[progress.currentDay] : undefined;
+    let tasks = cached || baseProgram.tasks;
+
     const daySwap = progress.swaps.find(s => s.day === progress.currentDay);
-    let tasks: Task[];
-    
     if (daySwap) {
       const originalTask = allTasks.find(t => t.id === daySwap.originalTaskId);
       const swappedTask = allTasks.find(t => t.id === daySwap.swappedTaskId);
-      
       if (originalTask && swappedTask) {
-        tasks = baseProgram.tasks.map(t => 
-          t.id === originalTask.id ? swappedTask : t
-        );
-      } else {
-        tasks = baseProgram.tasks;
-      }
-    } else {
-      tasks = generateDailyTasks(
-        allTasks,
-        progress.currentDay,
-        completedTaskIds,
-        progress.ratings,
-        progress.preferences,
-        dayOfWeek
-      );
-      
-      if (tasks.length === 0) {
-        tasks = baseProgram.tasks;
+        tasks = tasks.map(t => (t.id === originalTask.id ? swappedTask : t));
       }
     }
-    
+
     return {
       ...baseProgram,
       tasks,
     };
-  }, [progress.currentDay, progress.useAdaptiveTasks, progress.ratings, progress.preferences, progress.swaps, progress.completedTasks, progress.startDate, allTasks]);
+  }, [progress.currentDay, progress.useAdaptiveTasks, progress.swaps, adaptiveCache, allTasks, progress.startDate]);
+
+  useEffect(() => {
+    if (!progress.useAdaptiveTasks) return;
+    if (adaptiveCache[progress.currentDay]) return;
+
+    const baseProgram = YEAR_PROGRAM.find(p => p.day === progress.currentDay) || YEAR_PROGRAM[0];
+    const completedTaskIds = progress.completedTasks
+      .slice(-20)
+      .map(ct => ct.taskId);
+
+    const currentDate = new Date(progress.startDate + (progress.currentDay - 1) * 24 * 60 * 60 * 1000);
+    const dayOfWeek = getDayOfWeek(currentDate);
+
+    const generated = generateDailyTasks(
+      allTasks,
+      progress.currentDay,
+      completedTaskIds,
+      progress.ratings,
+      progress.preferences,
+      dayOfWeek
+    );
+
+    const tasks = generated.length > 0 ? generated : baseProgram.tasks;
+
+    setAdaptiveCache(prev => ({
+      ...prev,
+      [progress.currentDay]: tasks,
+    }));
+  }, [
+    progress.currentDay,
+    progress.useAdaptiveTasks,
+    progress.completedTasks,
+    progress.ratings,
+    progress.preferences,
+    progress.startDate,
+    allTasks,
+    adaptiveCache,
+  ]);
 
   const todayCompletedTasks = useMemo(() => {
     return progress.completedTasks.filter(t => t.day === progress.currentDay);
@@ -160,6 +276,8 @@ export const [FlowSpeakProvider, useFlowSpeak] = createContextHook(() => {
   };
 
   const completeTask = (task: Task) => {
+    if (isTaskCompleted(task.id)) return;
+
     const newCompletedTask: CompletedTask = {
       taskId: task.id,
       day: progress.currentDay,
@@ -179,6 +297,44 @@ export const [FlowSpeakProvider, useFlowSpeak] = createContextHook(() => {
     const updatedProgress: UserProgress = {
       ...progress,
       completedTasks: progress.completedTasks.filter(
+        t => !(t.taskId === taskId && t.day === progress.currentDay)
+      ),
+      lastActiveDate: Date.now(),
+    };
+
+    saveMutation.mutate(updatedProgress);
+  };
+
+  const todayExtraPractice = useMemo(() => {
+    return progress.extraPractice.filter(p => p.day === progress.currentDay);
+  }, [progress.extraPractice, progress.currentDay]);
+
+  const isExtraPracticeCompleted = (taskId: string) => {
+    return todayExtraPractice.some(t => t.taskId === taskId);
+  };
+
+  const completeExtraPractice = (task: Task) => {
+    if (isExtraPracticeCompleted(task.id)) return;
+
+    const newEntry: ExtraPractice = {
+      taskId: task.id,
+      day: progress.currentDay,
+      completedAt: Date.now(),
+    };
+
+    const updatedProgress: UserProgress = {
+      ...progress,
+      extraPractice: [...progress.extraPractice, newEntry],
+      lastActiveDate: Date.now(),
+    };
+
+    saveMutation.mutate(updatedProgress);
+  };
+
+  const uncompleteExtraPractice = (taskId: string) => {
+    const updatedProgress: UserProgress = {
+      ...progress,
+      extraPractice: progress.extraPractice.filter(
         t => !(t.taskId === taskId && t.day === progress.currentDay)
       ),
       lastActiveDate: Date.now(),
@@ -311,9 +467,9 @@ export const [FlowSpeakProvider, useFlowSpeak] = createContextHook(() => {
     return progress.ratings.find(r => r.taskId === taskId && r.day === progress.currentDay);
   };
 
-  const swapTask = (originalTaskId: string, reason?: string) => {
+  const swapTask = (originalTaskId: string, reason?: string): Task | null => {
     const originalTask = allTasks.find(t => t.id === originalTaskId);
-    if (!originalTask) return;
+    if (!originalTask) return null;
 
     const usedTaskIds = currentDayProgram.tasks.map(t => t.id);
     const alternativeTask = getAlternativeTask(
@@ -325,7 +481,7 @@ export const [FlowSpeakProvider, useFlowSpeak] = createContextHook(() => {
 
     if (!alternativeTask) {
       console.log('No alternative task available');
-      return;
+      return null;
     }
 
     const taskSwap: TaskSwap = {
@@ -342,7 +498,15 @@ export const [FlowSpeakProvider, useFlowSpeak] = createContextHook(() => {
       lastActiveDate: Date.now(),
     };
 
+    setAdaptiveCache(prev => ({
+      ...prev,
+      [progress.currentDay]: (prev[progress.currentDay] || currentDayProgram.tasks).map(t =>
+        t.id === originalTask.id ? alternativeTask : t
+      ),
+    }));
+
     saveMutation.mutate(updatedProgress);
+    return alternativeTask;
   };
 
   const updatePreferences = (preferences: Partial<UserPreferences>) => {
@@ -369,8 +533,8 @@ export const [FlowSpeakProvider, useFlowSpeak] = createContextHook(() => {
   };
 
   const dailyInsight = useMemo(() => {
-    return createDailyInsight(progress.ratings, allTasks);
-  }, [progress.ratings, allTasks]);
+    return createDailyInsight(progress.ratings, allTasks, progress.moods);
+  }, [progress.ratings, allTasks, progress.moods]);
 
   const currentQuarter = useMemo(() => {
     return getQuarterForDay(progress.currentDay);
@@ -380,9 +544,13 @@ export const [FlowSpeakProvider, useFlowSpeak] = createContextHook(() => {
     progress,
     currentDayProgram,
     todayCompletedTasks,
+    todayExtraPractice,
     isTaskCompleted,
+    isExtraPracticeCompleted,
     completeTask,
+    completeExtraPractice,
     uncompleteTask,
+    uncompleteExtraPractice,
     goToNextDay,
     goToPreviousDay,
     progressPercentage,
@@ -398,7 +566,21 @@ export const [FlowSpeakProvider, useFlowSpeak] = createContextHook(() => {
     dailyInsight,
     currentQuarter,
     allTasks,
+    isHydrated: progressQuery.isSuccess,
     isLoading: progressQuery.isLoading,
     isSaving: saveMutation.isPending,
+    loadError,
+    saveError,
+    resetProgress: async () => {
+      try {
+        await AsyncStorage.removeItem(STORAGE_KEY);
+        setAdaptiveCache({});
+        setProgress(defaultProgress);
+        queryClient.removeQueries({ queryKey: ['flowspeak-progress'] });
+        queryClient.setQueryData(['flowspeak-progress'], defaultProgress);
+      } catch (error) {
+        setLoadError(error instanceof Error ? error : new Error('Failed to reset progress'));
+      }
+    },
   };
 });
